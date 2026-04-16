@@ -1,4 +1,4 @@
-# Flowchart Documenter (version 1.1 - New features added)
+# Flowchart Documenter (version 1.1 - New features)
 
 A two-part system for creating and viewing interactive diagrams where every node and link can contain piece-wise documentation. The data hierarchy is as follows: Your file can contain multiple canvas; within a canvas is a flow chart of nodes/links; then within each node/link you can add multiple headings, with each heading you can add a writeup. Writeups can contain hyperlinks. There are also special connector headings that allow you to make jump-links to any other node/link (even if they are in a different canvas).
 
