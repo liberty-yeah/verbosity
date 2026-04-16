@@ -7,48 +7,30 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; overflow: hidden; background-color: #f5f6fa; }
-
         #hover-trigger { width: 15px; background-color: #FF9999; height: 100vh; position: fixed; left: 0; z-index: 100; cursor: pointer; }
         #sidebar { position: fixed; left: -280px; top: 0; width: 280px; height: 100vh; background-color: #2f3640; color: white; transition: left 0.3s; z-index: 101; padding: 20px; }
         #sidebar.active { left: 0; }
         .sidebar-entry { padding: 15px; margin: 10px 0; background: #353b48; border-radius: 6px; cursor: pointer; border-left: 4px solid transparent; }
         .sidebar-entry.active { border-left-color: #FF9999; background: #4b515d; }
-
         .main-container { flex-grow: 1; margin-left: 15px; display: flex; flex-direction: column; height: 100vh; width: 100%; }
-        
-        /* Resizable layout updates */
         .top-half { display: flex; height: 50%; border-bottom: 3px solid #dcdde1; min-height: 100px; position: relative; }
         .panel { padding: 25px; overflow: auto; background: white; flex-grow: 1; position: relative; }
-        
-        /* Toggle Controls Styling */
-        .wrap-controls { position: sticky; top: -10px; right: 0; float: right; background: rgba(255,255,255,0.9); padding: 2px 5px; border-radius: 4px; font-size: 10px; z-index: 5; border: 1px solid #ddd; }
-        
-        /* Word Wrap States */
-        .no-wrap { white-space: nowrap; }
-        .no-wrap p, .no-wrap h2 { white-space: nowrap; display: inline-block; }
-
         .writeup-panel { width: 50%; min-width: 100px; }
         .menu-panel { min-width: 100px; }
-        
         .resizer-h { width: 8px; cursor: col-resize; background: #dcdde1; z-index: 10; }
         .resizer-v { height: 8px; cursor: row-resize; background: #dcdde1; z-index: 10; width: 100%; }
-
         .bottom-panel { flex-grow: 1; background-color: #f1f2f6; position: relative; overflow: hidden; min-height: 100px; }
-
         #main-svg { width: 100%; height: 100%; cursor: grab; display: block; background-image: radial-gradient(#d1d1d1 0.5px, transparent 0.5px); background-size: 20px 20px; }
-        #main-svg:active { cursor: grabbing; }
-
-        .btn-reset { position: absolute; bottom: 20px; right: 20px; padding: 10px 15px; background: #2f3640; color: white; border: none; border-radius: 4px; cursor: pointer; z-index: 10; }
-        .menu-item { display: block; padding: 10px; margin: 5px 0; background: #f8f9fa; border: 1px solid #dcdde1; border-radius: 4px; cursor: pointer; }
+        .menu-item { display: block; padding: 12px; margin: 8px 0; background: #f8f9fa; border: 1px solid #dcdde1; border-radius: 4px; cursor: pointer; transition: 0.2s; }
         .menu-item:hover { background: #FF9999; color: white; }
-        .menu-item.link-item { border-left: 4px solid #0000FF; }
-
-        .node { cursor: pointer; }
-        .node rect { fill: #70a1ff; stroke: #2f3640; stroke-width: 2; }
-        .edge { stroke: #718093; stroke-width: 2; fill: none; cursor: pointer; }
-        .edge.with-content { stroke: #0000FF; stroke-width: 4; }
+        .menu-item.connector-btn { border: 2px solid #70a1ff; background: #e1f5fe; font-weight: bold; }
         .placeholder-text { color: #a4b0be; text-align: center; margin-top: 20%; font-style: italic; }
         #load-prompt { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 200; text-align: center; }
+        .wrap-controls { position: sticky; top: -10px; right: 0; float: right; background: rgba(255,255,255,0.9); padding: 2px 5px; border-radius: 4px; font-size: 10px; z-index: 5; border: 1px solid #ddd; }
+        .no-wrap { white-space: nowrap; }
+        .node rect { fill: #70a1ff; stroke: #2f3640; stroke-width: 2; }
+        .edge { stroke: #718093; stroke-width: 2; fill: none; }
+        .edge.with-content { stroke: #0000FF; stroke-width: 4; }
     </style>
 </head>
 <body>
@@ -68,16 +50,11 @@
     <div class="main-container">
         <div class="top-half" id="top-container">
             <div class="panel writeup-panel" id="writeup-area">
-                <div class="wrap-controls">
-                    <input type="checkbox" id="wrap-left" checked onchange="toggleWrap('writeup-area', this.checked)"> <label for="wrap-left">Wrap</label>
-                </div>
+                <div class="wrap-controls"><input type="checkbox" id="wrap-left" checked onchange="toggleWrap('writeup-area', this.checked)"> <label>Wrap</label></div>
                 <p class="placeholder-text">Select a node or link to see details.</p>
             </div>
             <div class="resizer-h" id="resizer-horizontal"></div>
             <div class="panel menu-panel" id="menu-panel-container">
-                <div class="wrap-controls">
-                    <input type="checkbox" id="wrap-right" checked onchange="toggleWrap('menu-list', this.checked)"> <label for="wrap-right">Wrap</label>
-                </div>
                 <h4 id="menu-title">Documentation</h4>
                 <div id="menu-list">
                     <p class="placeholder-text">Click a node or link below.</p>
@@ -86,12 +63,9 @@
         </div>
         <div class="resizer-v" id="resizer-vertical"></div>
         <div class="bottom-panel" id="bottom-container">
-            <button class="btn-reset" onclick="resetView()">Reset View</button>
             <svg id="main-svg" onmousedown="startPan(event)" onmousemove="doPan(event)" onmouseup="endPan()" onmouseleave="endPan()">
                 <defs>
-                    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#718093" />
-                    </marker>
+                    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#718093" /></marker>
                 </defs>
                 <g id="viewport-group"></g>
             </svg>
@@ -99,31 +73,16 @@
     </div>
 
 <script>
-
-function linkify(text) {
-    const urlPattern = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
-    return text
-        .replace(urlPattern, '<a href="$1" target="_blank" style="color: #70a1ff; font-weight: bold;">$1</a>')
-        .replace(/\n/g, '<br>');
-}
-
     let projectData = null;
     let currentCanvasIdx = 0;
-    
-    // Pan state
-    let isPanning = false;
-    let startPoint = { x: 0, y: 0 };
-    let currentTranslate = { x: 0, y: 0 };
+    let isPanning = false, startPoint = { x: 0, y: 0 }, currentTranslate = { x: 20, y: 20 };
 
-    const sidebar = document.getElementById('sidebar');
-    const trigger = document.getElementById('hover-trigger');
-    const viewportGroup = document.getElementById('viewport-group');
-
-    trigger.addEventListener('mouseenter', () => sidebar.classList.add('active'));
+    function linkify(t) {
+        const urlP = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+        return t.replace(urlP, '<a href="$1" target="_blank" style="color: #70a1ff; font-weight: bold;">$1</a>').replace(/\n/g, '<br>');
+    }
 
     function loadProject(e) {
-        const file = e.target.files[0];
-        if(!file) return;
         const reader = new FileReader();
         reader.onload = (event) => {
             projectData = JSON.parse(event.target.result);
@@ -131,12 +90,11 @@ function linkify(text) {
             renderSidebar();
             if(projectData.canvases.length > 0) switchCanvas(0);
         };
-        reader.readAsText(file);
+        reader.readAsText(e.target.files[0]);
     }
 
     function renderSidebar() {
-        const container = document.getElementById('sidebar-list');
-        container.innerHTML = '';
+        const container = document.getElementById('sidebar-list'); container.innerHTML = '';
         projectData.canvases.forEach((c, i) => {
             const div = document.createElement('div');
             div.className = 'sidebar-entry' + (i === currentCanvasIdx ? ' active' : '');
@@ -149,65 +107,35 @@ function linkify(text) {
     function switchCanvas(idx) {
         currentCanvasIdx = idx;
         const canvas = projectData.canvases[idx];
-        viewportGroup.innerHTML = ''; 
+        const vg = document.getElementById('viewport-group');
+        vg.innerHTML = ''; 
         renderSidebar();
 
-        // Links
         canvas.links.forEach(link => {
-            const s = canvas.nodes.find(n => n.id === link.from);
-            const t = canvas.nodes.find(n => n.id === link.to);
-            if(s && t) {
-                const cx1 = s.x + 50; const cy1 = s.y + 30;
-                const cx2 = t.x + 50; const cy2 = t.y + 30;
-                const dx = cx2 - cx1; const dy = cy2 - cy1;
-                
-                let r = (dx === 0 && dy === 0) ? 0 : Math.min(Math.abs(52 / dx), Math.abs(32 / dy));
-                r = Math.min(r, 0.45);
+            const s = canvas.nodes.find(n => n.id === link.from), t = canvas.nodes.find(n => n.id === link.to);
+            if(!s || !t) return;
+            const cx1 = s.x+50, cy1 = s.y+30, cx2 = t.x+50, cy2 = t.y+30, dx = cx2-cx1, dy = cy2-cy1;
+            let r = Math.min(Math.min(Math.abs(52/dx), Math.abs(32/dy)), 0.45);
+            const x1 = cx1+dx*r, y1 = cy1+dy*r, x2 = cx2-dx*r, y2 = cy2-dy*r;
 
-                const x1 = cx1 + dx * r;
-                const y1 = cy1 + dy * r;
-                const x2 = cx2 - dx * r;
-                const y2 = cy2 - dy * r;
+            const hitbox = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            hitbox.setAttribute("x1", x1); hitbox.setAttribute("y1", y1); hitbox.setAttribute("x2", x2); hitbox.setAttribute("y2", y2);
+            hitbox.setAttribute("stroke", "transparent"); hitbox.setAttribute("stroke-width", "20"); hitbox.style.cursor = "pointer";
+            hitbox.onmousedown = (e) => { e.stopPropagation(); handleLinkClick(link); };
+            vg.appendChild(hitbox);
 
-                const hitbox = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                hitbox.setAttribute("x1", x1); 
-                hitbox.setAttribute("y1", y1);
-                hitbox.setAttribute("x2", x2); 
-                hitbox.setAttribute("y2", y2);
-                hitbox.setAttribute("stroke", "transparent");
-                hitbox.setAttribute("stroke-width", "20"); 
-                hitbox.style.cursor = "pointer";
-                
-                hitbox.onmousedown = (e) => { 
-                    e.stopPropagation(); 
-                    handleLinkClick(link); 
-                };
-                viewportGroup.appendChild(hitbox);
-
-                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                line.setAttribute("x1", x1); 
-                line.setAttribute("y1", y1);
-                line.setAttribute("x2", x2); 
-                line.setAttribute("y2", y2);
-                
-                const hasContent = link.content && link.content.length > 0;
-                line.setAttribute("class", `edge ${hasContent ? 'with-content' : ''}`);
-                line.setAttribute("data-link-id", link.id);
-                
-                line.style.pointerEvents = "none";
-                
-                if(link.type === 'forward' || link.type === 'both') line.setAttribute("marker-end", "url(#arrow)");
-                if(link.type === 'back' || link.type === 'both') line.setAttribute("marker-start", "url(#arrow)");
-                
-                viewportGroup.appendChild(line);
-            }
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", x1); line.setAttribute("y1", y1); line.setAttribute("x2", x2); line.setAttribute("y2", y2);
+            line.setAttribute("class", `edge ${link.content?.length > 0 ? 'with-content' : ''}`);
+            line.style.pointerEvents = "none";
+            if(link.type === 'forward' || link.type === 'both') line.setAttribute("marker-end", "url(#arrow)");
+            if(link.type === 'back' || link.type === 'both') line.setAttribute("marker-start", "url(#arrow)");
+            vg.appendChild(line);
         });
 
-        // Nodes
         canvas.nodes.forEach(node => {
             const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-            g.setAttribute("class", "node");
-            g.setAttribute("transform", `translate(${node.x},${node.y})`);
+            g.setAttribute("class", "node"); g.setAttribute("transform", `translate(${node.x},${node.y})`);
             g.onclick = (e) => { e.stopPropagation(); handleNodeClick(node); };
             const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
             rect.setAttribute("width", "100"); rect.setAttribute("height", "60"); rect.setAttribute("rx", "8");
@@ -215,117 +143,84 @@ function linkify(text) {
             text.setAttribute("x", "50"); text.setAttribute("y", "35"); text.setAttribute("text-anchor", "middle");
             text.setAttribute("fill", "white"); text.style.fontSize = "12px"; text.style.pointerEvents = "none";
             text.textContent = node.text;
-            g.appendChild(rect); g.appendChild(text); viewportGroup.appendChild(g);
+            g.appendChild(rect); g.appendChild(text); vg.appendChild(g);
         });
-        sidebar.classList.remove('active');
+        document.getElementById('sidebar').classList.remove('active');
         resetView();
     }
 
-function handleNodeClick(node) {
-    const menuList = document.getElementById('menu-list');
-    const writeupArea = document.getElementById('writeup-area');
-    const menuTitle = document.getElementById('menu-title');
-    menuTitle.innerText = `Documentation - ${node.text}`;
-    
-    // Preserve controls
-    writeupArea.innerHTML = `<div class="wrap-controls"><input type="checkbox" id="wrap-left" ${document.getElementById('wrap-left').checked ? 'checked' : ''} onchange="toggleWrap('writeup-area', this.checked)"> <label for="wrap-left">Wrap</label></div><p class="placeholder-text">Select a heading for <b>${node.text}</b>.</p>`;
-    
-    menuList.innerHTML = '';
-    if(!node.content || node.content.length === 0) {
-        menuList.innerHTML = '<p class="placeholder-text">No documentation available.</p>';
-        return;
+    function handleNodeClick(node) {
+        updateInspector('Node', node.text, node.content);
     }
-    node.content.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'menu-item';
-        div.innerText = item.h;
-        div.onclick = () => {
-            const wrapChecked = document.getElementById('wrap-left').checked;
-            // Updated to use linkify for clickable links
-            writeupArea.innerHTML = `<div class="wrap-controls"><input type="checkbox" id="wrap-left" ${wrapChecked ? 'checked' : ''} onchange="toggleWrap('writeup-area', this.checked)"> <label for="wrap-left">Wrap</label></div><h2>${item.h}</h2><hr style="margin:15px 0;"><p>${linkify(item.t)}</p>`;
-            toggleWrap('writeup-area', wrapChecked);
-        };
-        menuList.appendChild(div);
-    });
-}
 
-function handleLinkClick(link) {
-    const menuList = document.getElementById('menu-list');
-    const writeupArea = document.getElementById('writeup-area');
-    const menuTitle = document.getElementById('menu-title');
-    const linkLabel = link.label || `Connection`;
-    menuTitle.innerText = `Documentation - ${linkLabel}`;
-    
-    writeupArea.innerHTML = `<div class="wrap-controls"><input type="checkbox" id="wrap-left" ${document.getElementById('wrap-left').checked ? 'checked' : ''} onchange="toggleWrap('writeup-area', this.checked)"> <label for="wrap-left">Wrap</label></div><p class="placeholder-text">Select a heading for <b>${linkLabel}</b>.</p>`;
-    
-    menuList.innerHTML = '';
-    if(!link.content || link.content.length === 0) {
-        menuList.innerHTML = '<p class="placeholder-text">No documentation available.</p>';
-        return;
+    function handleLinkClick(link) {
+        updateInspector('Link', link.label || 'Connection', link.content);
     }
-    link.content.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'menu-item link-item';
-        div.innerText = item.h;
-        div.onclick = () => {
-            const wrapChecked = document.getElementById('wrap-left').checked;
-            // Updated to use linkify for clickable links
-            writeupArea.innerHTML = `<div class="wrap-controls"><input type="checkbox" id="wrap-left" ${wrapChecked ? 'checked' : ''} onchange="toggleWrap('writeup-area', this.checked)"> <label for="wrap-left">Wrap</label></div><h2>${item.h}</h2><hr style="margin:15px 0;"><p>${linkify(item.t)}</p>`;
-            toggleWrap('writeup-area', wrapChecked);
-        };
-        menuList.appendChild(div);
-    });
-}
 
-    function startPan(e) {
-        if(e.target.closest('.node') || e.target.closest('.edge')) return;
-        isPanning = true;
-        startPoint = { x: e.clientX - currentTranslate.x, y: e.clientY - currentTranslate.y };
+    function updateInspector(type, title, content) {
+        const menuList = document.getElementById('menu-list');
+        const writeupArea = document.getElementById('writeup-area');
+        document.getElementById('menu-title').innerText = `${type}: ${title}`;
+        writeupArea.innerHTML = `<div class="wrap-controls"><input type="checkbox" id="wrap-left" ${document.getElementById('wrap-left').checked ? 'checked' : ''} onchange="toggleWrap('writeup-area', this.checked)"> <label>Wrap</label></div><p class="placeholder-text">Select a heading.</p>`;
+        
+        menuList.innerHTML = '';
+        if(!content || content.length === 0) { menuList.innerHTML = '<p class="placeholder-text">No documentation.</p>'; return; }
+        
+        content.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'menu-item' + (item.isConnector ? ' connector-btn' : '');
+            div.innerHTML = item.isConnector ? `🔗 Jump to: ${item.h}` : item.h;
+            div.onclick = () => {
+                if(item.isConnector) { navigateToAddress(item.t); }
+                else {
+                    const wrap = document.getElementById('wrap-left').checked;
+                    writeupArea.innerHTML = `<div class="wrap-controls"><input type="checkbox" id="wrap-left" ${wrap ? 'checked' : ''} onchange="toggleWrap('writeup-area', this.checked)"> <label>Wrap</label></div><h2>${item.h}</h2><hr style="margin:15px 0;"><p>${linkify(item.t)}</p>`;
+                    toggleWrap('writeup-area', wrap);
+                }
+            };
+            menuList.appendChild(div);
+        });
     }
-    function doPan(e) {
-        if(!isPanning) return;
-        currentTranslate.x = e.clientX - startPoint.x;
-        currentTranslate.y = e.clientY - startPoint.y;
-        viewportGroup.setAttribute("transform", `translate(${currentTranslate.x}, ${currentTranslate.y})`);
+
+    function navigateToAddress(addr) {
+        const parts = addr.trim().split(':');
+        if(parts.length !== 3) { alert("Invalid Address"); return; }
+        const [cIdx, type, id] = [parseInt(parts[0]), parts[1], parts[2]];
+        
+        if(currentCanvasIdx !== cIdx) switchCanvas(cIdx);
+        
+        setTimeout(() => {
+            const vg = document.getElementById('viewport-group');
+            if(type === 'node') {
+                const node = projectData.canvases[cIdx].nodes.find(n => n.id === id);
+                if(node) {
+                    currentTranslate.x = (window.innerWidth/4) - node.x;
+                    currentTranslate.y = (window.innerHeight/4) - node.y;
+                    vg.setAttribute("transform", `translate(${currentTranslate.x}, ${currentTranslate.y})`);
+                    handleNodeClick(node);
+                }
+            } else {
+                const link = projectData.canvases[cIdx].links.find(l => l.id === id);
+                if(link) handleLinkClick(link);
+            }
+        }, 150);
     }
+
+    function startPan(e) { if(e.target.id !== 'main-svg') return; isPanning = true; startPoint = { x: e.clientX - currentTranslate.x, y: e.clientY - currentTranslate.y }; }
+    function doPan(e) { if(!isPanning) return; currentTranslate.x = e.clientX - startPoint.x; currentTranslate.y = e.clientY - startPoint.y; document.getElementById('viewport-group').setAttribute("transform", `translate(${currentTranslate.x}, ${currentTranslate.y})`); }
     function endPan() { isPanning = false; }
-    function resetView() {
-        currentTranslate = { x: 20, y: 20 };
-        viewportGroup.setAttribute("transform", `translate(${currentTranslate.x}, ${currentTranslate.y})`);
-    }
+    function resetView() { currentTranslate = { x: 50, y: 50 }; document.getElementById('viewport-group').setAttribute("transform", `translate(50, 50)`); }
+    function toggleWrap(id, on) { document.getElementById(id).classList.toggle('no-wrap', !on); }
 
-    // --- Resizing Logic ---
-    const resizerH = document.getElementById('resizer-horizontal');
-    const resizerV = document.getElementById('resizer-vertical');
-    const leftPanel = document.querySelector('.writeup-panel');
-    const topHalf = document.querySelector('.top-half');
-
-    resizerH.onmousedown = (e) => {
-        document.onmousemove = (e) => {
-            let newWidth = (e.clientX - 15);
-            leftPanel.style.width = newWidth + 'px';
-            leftPanel.style.flexGrow = '0';
-        };
+    // Resizing logic
+    document.getElementById('resizer-horizontal').onmousedown = () => {
+        document.onmousemove = (e) => { document.querySelector('.writeup-panel').style.width = (e.clientX-20) + 'px'; };
         document.onmouseup = () => document.onmousemove = null;
     };
-
-    resizerV.onmousedown = (e) => {
-        document.onmousemove = (e) => {
-            let newHeight = e.clientY;
-            topHalf.style.height = newHeight + 'px';
-        };
+    document.getElementById('resizer-vertical').onmousedown = () => {
+        document.onmousemove = (e) => { document.querySelector('.top-half').style.height = e.clientY + 'px'; };
         document.onmouseup = () => document.onmousemove = null;
     };
-
-    // --- Word Wrap Logic ---
-    function toggleWrap(id, isEnabled) {
-        const el = document.getElementById(id);
-        if (isEnabled) {
-            el.classList.remove('no-wrap');
-        } else {
-            el.classList.add('no-wrap');
-        }
-    }
 </script>
 </body>
 </html>
